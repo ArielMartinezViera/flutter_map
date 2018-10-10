@@ -1,14 +1,24 @@
-import 'dart:math';
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map/src/core/polyutil.dart';
 import 'package:flutter_map/src/map/map.dart';
-import 'package:latlong/latlong.dart' hide Path;  // conflict with Path from UI
+import 'package:latlong/latlong.dart' hide Path; // conflict with Path from UI
+
+typedef PolygonCallback(Polygon polygon, [LatLng location]);
 
 class PolygonLayerOptions extends LayerOptions {
   final List<Polygon> polygons;
-  PolygonLayerOptions({this.polygons = const []});
+  final PolygonCallback onTap;
+  final PolygonCallback onLongPress;
+
+  PolygonLayerOptions({
+    this.polygons = const [],
+    this.onTap,
+    this.onLongPress,
+  });
 }
 
 class Polygon {
@@ -17,68 +27,124 @@ class Polygon {
   final Color color;
   final double borderStrokeWidth;
   final Color borderColor;
+  final bool closeFigure;
+  final bool markPoints;
+  final StrokeCap strokeCap;
+  final StrokeJoin strokeJoin;
+
   Polygon({
     this.points,
     this.color = const Color(0xFF00FF00),
     this.borderStrokeWidth = 0.0,
     this.borderColor = const Color(0xFFFFFF00),
+    this.closeFigure = false,
+    this.markPoints = false,
+    this.strokeCap = StrokeCap.round,
+    this.strokeJoin = StrokeJoin.round,
   });
 }
 
 class PolygonLayer extends StatelessWidget {
   final PolygonLayerOptions polygonOpts;
   final MapState map;
+  LatLng _locationTouched;
+
   PolygonLayer(this.polygonOpts, this.map);
 
   Widget build(BuildContext context) {
-    return new LayoutBuilder(
+    return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints bc) {
-        final size = new Size(bc.maxWidth, bc.maxHeight);
+        final size = Size(bc.maxWidth, bc.maxHeight);
         return _build(context, size);
       },
     );
   }
 
   Widget _build(BuildContext context, Size size) {
-    return new StreamBuilder<int>(
+    return StreamBuilder<int>(
       stream: map.onMoved, // a Stream<int> or null
-      builder: (BuildContext context, _) {
+      builder: (BuildContext context, AsyncSnapshot<int> snapshot) {
         for (var polygonOpt in polygonOpts.polygons) {
           polygonOpt.offsets.clear();
           var i = 0;
           for (var point in polygonOpt.points) {
             var pos = map.project(point);
-            pos = pos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) - map.getPixelOrigin();
-            polygonOpt.offsets.add(new Offset(pos.x.toDouble(), pos.y.toDouble()));
+            pos = pos.multiplyBy(map.getZoomScale(map.zoom, map.zoom)) -
+                map.getPixelOrigin();
+            polygonOpt.offsets.add(Offset(pos.x.toDouble(), pos.y.toDouble()));
             if (i > 0 && i < polygonOpt.points.length) {
-              polygonOpt.offsets.add(new Offset(pos.x.toDouble(), pos.y.toDouble()));
+              polygonOpt.offsets
+                  .add(Offset(pos.x.toDouble(), pos.y.toDouble()));
             }
             i++;
           }
         }
-
-        var polygons = <Widget>[];
-        for (var polygonOpt in this.polygonOpts.polygons) {
-          polygons.add(
-            new CustomPaint(
-              painter: new PolygonPainter(polygonOpt),
-              size: size,
-            ),
-          );
-        }
-
-        return new Container(
-          child: new Stack(
-            children: polygons,
+        return Container(
+          child: Stack(
+            children: _buildPolygons(context, size),
           ),
         );
       },
     );
   }
+
+  List<Widget> _buildPolygons(BuildContext context, Size size) {
+    var list = polygonOpts.polygons
+        .where((it) => it.points.isNotEmpty)
+        .map((it) => _buildPolygonWidget(context, it, size))
+        .toList();
+    return list;
+  }
+
+  Widget _buildPolygonWidget(BuildContext context, Polygon polygon, Size size) {
+    return GestureDetector(
+      onTapDown: (details) {
+        var renderObject = context.findRenderObject() as RenderBox;
+        var boxOffset = renderObject.localToGlobal(Offset.zero);
+        var width = renderObject.size.width;
+        var height = renderObject.size.height;
+        _locationTouched = map.offsetToLatLng(
+            details.globalPosition, boxOffset, width, height);
+        //print(_locationTouched);
+      },
+      onTap: () {
+        if (_locationTouched != null) {
+          var polygon = _determinatePolygonTapped(_locationTouched);
+          if (polygon != null) polygonOpts.onTap(polygon, _locationTouched);
+          _locationTouched = null;
+        }
+      },
+      onLongPress: () {
+        if (_locationTouched != null) {
+          var polygon = _determinatePolygonTapped(_locationTouched);
+          if (polygon != null)
+            polygonOpts.onLongPress(polygon, _locationTouched);
+          _locationTouched = null;
+        }
+      },
+      child: CustomPaint(
+        painter: PolygonPainter(polygon),
+        size: size,
+      ),
+    );
+  }
+
+  /// Returns the polygon that contains the [location] and
+  /// is on top of the other polygons.
+  Polygon _determinatePolygonTapped(LatLng point) {
+    for (var polygon in polygonOpts.polygons.reversed) {
+      if (PolyUtil.containsLocation(
+          point.latitude, point.longitude, polygon.points)) {
+        return polygon;
+      }
+    }
+    return null;
+  }
 }
 
 class PolygonPainter extends CustomPainter {
   final Polygon polygonOpt;
+
   PolygonPainter(this.polygonOpt);
 
   @override
@@ -88,48 +154,42 @@ class PolygonPainter extends CustomPainter {
     }
     final rect = Offset.zero & size;
     canvas.clipRect(rect);
-    final paint = new Paint()
+    final paint = Paint()
       ..style = PaintingStyle.fill
-      ..color = polygonOpt.color;
+      ..color = polygonOpt.color
+      ..strokeCap = polygonOpt.strokeCap
+      ..strokeJoin = polygonOpt.strokeJoin;
     final borderPaint = polygonOpt.borderStrokeWidth > 0.0
-        ? (new Paint()
-      ..color = polygonOpt.borderColor
-      ..strokeWidth = polygonOpt.borderStrokeWidth)
+        ? (Paint()
+          ..style = PaintingStyle.stroke
+          ..color = polygonOpt.borderColor
+          ..strokeWidth = polygonOpt.borderStrokeWidth
+          ..strokeCap = polygonOpt.strokeCap
+          ..strokeJoin = polygonOpt.strokeJoin)
         : null;
-
     _paintPolygon(canvas, polygonOpt.offsets, paint);
-
-    double borderRadius = (polygonOpt.borderStrokeWidth / 2);
     if (polygonOpt.borderStrokeWidth > 0.0) {
-        _paintLine(canvas, polygonOpt.offsets, borderRadius, borderPaint);
+      double borderRadius = (polygonOpt.borderStrokeWidth / 2);
+      _paintLine(canvas, polygonOpt.offsets, borderRadius, borderPaint);
     }
   }
 
-  void _paintLine(Canvas canvas, List<Offset> offsets, double radius, Paint paint) {
+  void _paintLine(
+      Canvas canvas, List<Offset> offsets, double radius, Paint paint) {
+    if (polygonOpt.closeFigure) offsets.add(offsets.first);
     canvas.drawPoints(PointMode.lines, offsets, paint);
-    for (var offset in offsets) {
-      canvas.drawCircle(offset, radius, paint);
-    }
+    if (polygonOpt.markPoints)
+      for (var offset in offsets) {
+        canvas.drawCircle(offset, radius, paint);
+      }
   }
 
   void _paintPolygon(Canvas canvas, List<Offset> offsets, Paint paint) {
-    Path path = new Path();
+    Path path = Path();
     path.addPolygon(offsets, true);
     canvas.drawPath(path, paint);
   }
 
   @override
   bool shouldRepaint(PolygonPainter other) => false;
-}
-
-double _dist(Offset v, Offset w) {
-  return sqrt(_dist2(v, w));
-}
-
-double _dist2(Offset v, Offset w) {
-  return _sqr(v.dx - w.dx) + _sqr(v.dy - w.dy);
-}
-
-double _sqr(double x) {
-  return x * x;
 }

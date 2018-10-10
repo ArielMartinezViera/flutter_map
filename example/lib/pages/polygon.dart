@@ -3,9 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import '../widgets/drawer.dart';
 import 'package:latlong/latlong.dart';
 
-class PolylinePage extends StatelessWidget {
+class PolygonPage extends StatelessWidget {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  static const String route = "polyline";
+  static const String route = "polygon";
 
   Widget build(BuildContext context) {
     var pointsA = <LatLng>[
@@ -20,15 +20,15 @@ class PolylinePage extends StatelessWidget {
     ];
     return Scaffold(
       key: _scaffoldKey,
-      appBar: AppBar(title: Text("Polylines")),
-      drawer: buildDrawer(context, PolylinePage.route),
+      appBar: AppBar(title: Text("Polygons")),
+      drawer: buildDrawer(context, PolygonPage.route),
       body: Padding(
         padding: EdgeInsets.all(8.0),
         child: Column(
           children: [
             Padding(
               padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
-              child: Text("Polylines"),
+              child: Text("Polygons"),
             ),
             Flexible(
               child: FlutterMap(
@@ -38,20 +38,27 @@ class PolylinePage extends StatelessWidget {
                 ),
                 layers: [
                   TileLayerOptions(
-                      urlTemplate:
-                          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                      subdomains: ['a', 'b', 'c']),
-                  PolylineLayerOptions(
-                    polylines: [
-                      Polyline(
+                    urlTemplate:
+                        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                    subdomains: ['a', 'b', 'c'],
+                  ),
+                  PolygonLayerOptions(
+                    polygons: [
+                      Polygon(
                         points: pointsA,
-                        strokeWidth: 20.0,
-                        color: Colors.purple,
+                        borderStrokeWidth: 4.0,
+                        borderColor: Colors.purple,
+                        closeFigure: true,
+                        color: Color(
+                            0x509C27B0), // Colors.purple with less opacity
                       ),
-                      Polyline(
+                      Polygon(
                         points: pointsB,
-                        strokeWidth: 20.0,
-                        color: Colors.red,
+                        borderStrokeWidth: 4.0,
+                        borderColor: Colors.red,
+                        closeFigure: true,
+                        color:
+                            Color(0x50F44336), // Colors.red with less opacity
                       ),
                     ],
                     onTap: _handleTap,
@@ -66,15 +73,14 @@ class PolylinePage extends StatelessWidget {
     );
   }
 
-  void _handleTap(Polyline polygon, [LatLng location]) {
-    var message = "Tapped on polyline #${polygon.hashCode}. LatLng = $location";
+  void _handleTap(Polygon polygon, [LatLng location]) {
+    var message = "Tapped on polygon #${polygon.hashCode}. LatLng = $location";
     print(message);
     _showSnackBarMsg(message);
   }
 
-  void _handleLongPress(Polyline polygon, [LatLng location]) {
-    var message =
-        "Long Press on polyline #${polygon.hashCode}. LatLng = $location";
+  void _handleLongPress(Polygon polygon, [LatLng location]) {
+    var message = "Long Press on polygon #${polygon.hashCode}. LatLng = $location";
     print(message);
     _showSnackBarMsg(message);
   }

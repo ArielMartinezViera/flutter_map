@@ -1,16 +1,17 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/src/core/bounds.dart';
 import 'package:flutter_map/src/core/center_zoom.dart';
 import 'package:flutter_map/src/core/point.dart';
+import 'package:flutter_map/src/core/util.dart';
 import 'package:latlong/latlong.dart';
 
 class MapControllerImpl implements MapController {
-  Completer<Null> _readyCompleter = new Completer<Null>();
+  Completer<Null> _readyCompleter = Completer<Null>();
   MapState _state;
-
   Future<Null> get onReady => _readyCompleter.future;
 
   set state(MapState state) {
@@ -54,7 +55,7 @@ class MapState {
   Point _pixelOrigin;
   bool _initialized = false;
 
-  MapState(this.options) : _onMoveSink = new StreamController.broadcast();
+  MapState(this.options) : _onMoveSink = StreamController.broadcast();
 
   Point _size;
 
@@ -99,7 +100,7 @@ class MapState {
     _onMoveSink.add(null);
 
     if (options.onPositionChanged != null) {
-      options.onPositionChanged(new MapPosition(
+      options.onPositionChanged(MapPosition(
         center: center,
         bounds: bounds,
         zoom: zoom,
@@ -146,7 +147,7 @@ class MapState {
 
   LatLngBounds _calculateBounds() {
     var bounds = getPixelBounds(zoom);
-    return new LatLngBounds(
+    return LatLngBounds(
       unproject(bounds.bottomLeft),
       unproject(bounds.topRight),
     );
@@ -164,7 +165,7 @@ class MapState {
     var swPoint = project(bounds.southWest, zoom);
     var nePoint = project(bounds.northEast, zoom);
     var center = unproject((swPoint + nePoint) / 2 + paddingOffset, zoom);
-    return new CenterZoom(
+    return CenterZoom(
       center: center,
       zoom: zoom,
     );
@@ -178,7 +179,7 @@ class MapState {
     var nw = bounds.northWest;
     var se = bounds.southEast;
     var size = this.size - padding;
-    var boundsSize = new Bounds(project(se, zoom), project(nw, zoom)).size;
+    var boundsSize = Bounds(project(se, zoom), project(nw, zoom)).size;
     var scaleX = size.x / boundsSize.x;
     var scaleY = size.y / boundsSize.y;
     var scale = inside ? math.max(scaleX, scaleY) : math.min(scaleX, scaleY);
@@ -203,6 +204,17 @@ class MapState {
   }
 
   LatLng layerPointToLatLng(Point point) {
+    return unproject(point);
+  }
+
+  LatLng offsetToLatLng(
+      Offset rawOffset, Offset boxOffset, double width, double height) {
+    var deltaOffset = rawOffset - boxOffset;
+    var localPoint = Point(deltaOffset.dx, deltaOffset.dy);
+    var localPointCenterDistance =
+        Point((width / 2) - localPoint.x, (height / 2) - localPoint.y);
+    var mapCenter = project(center);
+    var point = mapCenter - localPointCenterDistance;
     return unproject(point);
   }
 
@@ -240,6 +252,15 @@ class MapState {
     var scale = getZoomScale(mapZoom, zoom);
     var pixelCenter = project(center, zoom).floor();
     Point<num> halfSize = size / (scale * 2);
-    return new Bounds(pixelCenter - halfSize, pixelCenter + halfSize);
+    return Bounds(pixelCenter - halfSize, pixelCenter + halfSize);
+  }
+
+  double getMetersPerPixel(double latitude) {
+    double pixelsPerTile = 256.0;
+    double numTiles = math.pow(2, this.zoom);
+    double metersPerTile = math.cos(degToRadian(latitude)) *
+        EARTH_CIRCUMFERENCE_METERS /
+        numTiles;
+    return metersPerTile / pixelsPerTile;
   }
 }
