@@ -76,20 +76,21 @@ TileLayerOptions(
 ),
 ```
 
-
 To use, you'll need a mapbox key:
 
 1. Create a [mapbox] account to get an api key
-2. open leaflet_flutter_example/lib/main.dart and paste the API key into the
-`additionalOptions` map.
+2. open leaflet_flutter_example/lib/main.dart and paste the API key into the `additionalOptions` map.
 
 [leaflet]: http://leafletjs.com/
 [mapbox]: https://www.mapbox.com/
 
 ## Offline maps
-[Follow this guide to grab offline tiles](https://tilemill-project.github.io/tilemill/docs/guides/osm-bright-mac-quickstart/)<br>
+
+[Follow this guide to grab offline tiles](https://tilemill-project.github.io/tilemill/docs/guides/osm-bright-mac-quickstart/)
+
 Once you have your map exported to `.mbtiles`, you can use [mbtilesToPng](https://github.com/alfanhui/mbtilesToPngs) to unpack into `/{z}/{x}/{y}.png`. Move this to Assets folder and add  Asset directories to `pubspec.yaml`. Minimum required fields for offline maps are:
-```
+
+```dart
 FlutterMap(
   options: MapOptions(
     center: LatLng(56.704173, 11.543808),
@@ -108,10 +109,13 @@ FlutterMap(
   ],
 ),
 ```
-Make sure PanBoundaries are within offline map boundary to stop missing asset errors.<br>
-See the `flutter_map_example/` folder for a working example.<br>
+
+Make sure PanBoundaries are within offline map boundary to stop missing asset errors.
+
+See the `flutter_map_example/` folder for a working example.
 
 ## Features
+
 This package is under active development. 
 The following roadmap is focused on the features we require at AppTree. We welcome
 any contributions for items both on and off of the roadmap.
@@ -127,5 +131,6 @@ any contributions for items both on and off of the roadmap.
 - [x] UI Settings support ( disable pan/zoom etc.)
 - [ ] Current location support
 - [ ] Documentation
-- [ ] Polylines
+- [x] Polylines
+- [x] Polygons
 - [x] Offline map support
