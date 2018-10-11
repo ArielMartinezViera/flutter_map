@@ -7,7 +7,7 @@ import 'package:flutter_map/src/core/polyutil.dart';
 import 'package:flutter_map/src/map/map.dart';
 import 'package:latlong/latlong.dart' hide Path; // conflict with Path from UI
 
-typedef PolylineCallback(Polyline polyline, [LatLng location]);
+typedef PolylineCallback(Polyline polyline, LatLng location);
 
 class PolylineLayerOptions extends LayerOptions {
   final List<Polyline> polylines;
@@ -106,21 +106,8 @@ class PolylineLayer extends StatelessWidget {
             details.globalPosition, boxOffset, width, height);
         //print(_locationTouched);
       },
-      onTap: () {
-        if (_locationTouched != null) {
-          var polyline = _determinatePolylineTapped(_locationTouched);
-          if (polyline != null) polylineOpts.onTap(polyline, _locationTouched);
-          _locationTouched = null;
-        }
-      },
-      onLongPress: () {
-        if (_locationTouched != null) {
-          var polyline = _determinatePolylineTapped(_locationTouched);
-          if (polyline != null)
-            polylineOpts.onLongPress(polyline, _locationTouched);
-          _locationTouched = null;
-        }
-      },
+      onTap: () => _handleCallback(polylineOpts.onTap),
+      onLongPress: () => _handleCallback(polylineOpts.onLongPress),
       child: CustomPaint(
         painter: PolylinePainter(polyline),
         size: size,
@@ -146,6 +133,15 @@ class PolylineLayer extends StatelessWidget {
       }
     }
     return null;
+  }
+
+  void _handleCallback(PolylineCallback callback) {
+    if (_locationTouched != null && callback != null) {
+      var polyline = _determinatePolylineTapped(_locationTouched);
+      if (polyline != null)
+        callback(polyline, _locationTouched);
+      _locationTouched = null;
+    }
   }
 }
 

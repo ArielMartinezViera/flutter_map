@@ -73,14 +73,15 @@ class PolygonPage extends StatelessWidget {
     );
   }
 
-  void _handleTap(Polygon polygon, [LatLng location]) {
+  void _handleTap(Polygon polygon, LatLng location) {
     var message = "Tapped on polygon #${polygon.hashCode}. LatLng = $location";
     print(message);
     _showSnackBarMsg(message);
   }
 
-  void _handleLongPress(Polygon polygon, [LatLng location]) {
-    var message = "Long Press on polygon #${polygon.hashCode}. LatLng = $location";
+  void _handleLongPress(Polygon polygon, LatLng location) {
+    var message =
+        "Long Press on polygon #${polygon.hashCode}. LatLng = $location";
     print(message);
     _showSnackBarMsg(message);
   }

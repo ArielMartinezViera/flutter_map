@@ -45,12 +45,12 @@ class PolylinePage extends StatelessWidget {
                     polylines: [
                       Polyline(
                         points: pointsA,
-                        strokeWidth: 20.0,
+                        strokeWidth: 10.0,
                         color: Colors.purple,
                       ),
                       Polyline(
                         points: pointsB,
-                        strokeWidth: 20.0,
+                        strokeWidth: 10.0,
                         color: Colors.red,
                       ),
                     ],
@@ -66,15 +66,15 @@ class PolylinePage extends StatelessWidget {
     );
   }
 
-  void _handleTap(Polyline polygon, [LatLng location]) {
-    var message = "Tapped on polyline #${polygon.hashCode}. LatLng = $location";
+  void _handleTap(Polyline polyline, LatLng location) {
+    var message = "Tapped on polyline #${polyline.hashCode}. LatLng = $location";
     print(message);
     _showSnackBarMsg(message);
   }
 
-  void _handleLongPress(Polyline polygon, [LatLng location]) {
+  void _handleLongPress(Polyline polyline, LatLng location) {
     var message =
-        "Long Press on polyline #${polygon.hashCode}. LatLng = $location";
+        "Long Press on polyline #${polyline.hashCode}. LatLng = $location";
     print(message);
     _showSnackBarMsg(message);
   }

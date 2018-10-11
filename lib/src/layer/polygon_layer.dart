@@ -7,7 +7,7 @@ import 'package:flutter_map/src/core/polyutil.dart';
 import 'package:flutter_map/src/map/map.dart';
 import 'package:latlong/latlong.dart' hide Path; // conflict with Path from UI
 
-typedef PolygonCallback(Polygon polygon, [LatLng location]);
+typedef PolygonCallback(Polygon polygon, LatLng location);
 
 class PolygonLayerOptions extends LayerOptions {
   final List<Polygon> polygons;
@@ -107,21 +107,8 @@ class PolygonLayer extends StatelessWidget {
             details.globalPosition, boxOffset, width, height);
         //print(_locationTouched);
       },
-      onTap: () {
-        if (_locationTouched != null) {
-          var polygon = _determinatePolygonTapped(_locationTouched);
-          if (polygon != null) polygonOpts.onTap(polygon, _locationTouched);
-          _locationTouched = null;
-        }
-      },
-      onLongPress: () {
-        if (_locationTouched != null) {
-          var polygon = _determinatePolygonTapped(_locationTouched);
-          if (polygon != null)
-            polygonOpts.onLongPress(polygon, _locationTouched);
-          _locationTouched = null;
-        }
-      },
+      onTap: () => _handleCallback(polygonOpts.onTap),
+      onLongPress: () => _handleCallback(polygonOpts.onLongPress),
       child: CustomPaint(
         painter: PolygonPainter(polygon),
         size: size,
@@ -139,6 +126,14 @@ class PolygonLayer extends StatelessWidget {
       }
     }
     return null;
+  }
+
+  void _handleCallback(PolygonCallback callback) {
+    if (_locationTouched != null && callback != null) {
+      var polygon = _determinatePolygonTapped(_locationTouched);
+      if (polygon != null) callback(polygon, _locationTouched);
+      _locationTouched = null;
+    }
   }
 }
 

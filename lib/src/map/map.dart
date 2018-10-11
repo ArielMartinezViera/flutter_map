@@ -257,10 +257,9 @@ class MapState {
 
   double getMetersPerPixel(double latitude) {
     double pixelsPerTile = 256.0;
-    double numTiles = math.pow(2, this.zoom);
-    double metersPerTile = math.cos(degToRadian(latitude)) *
-        EARTH_CIRCUMFERENCE_METERS /
-        numTiles;
+    double numTiles = math.pow(2, this.zoom).toDouble();
+    double metersPerTile =
+        math.cos(degToRadian(latitude)) * EARTH_CIRCUMFERENCE_METERS / numTiles;
     return metersPerTile / pixelsPerTile;
   }
 }
