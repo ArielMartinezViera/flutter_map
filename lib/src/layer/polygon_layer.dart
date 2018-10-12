@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/src/core/polyutil.dart';
 import 'package:flutter_map/src/map/map.dart';
 import 'package:latlong/latlong.dart' hide Path; // conflict with Path from UI
 
@@ -22,23 +21,27 @@ class PolygonLayerOptions extends LayerOptions {
 }
 
 class Polygon {
+  final Key key;
   final List<LatLng> points;
   final List<Offset> offsets = [];
   final Color color;
   final double borderStrokeWidth;
   final Color borderColor;
   final bool closeFigure;
-  final bool markPoints;
+  final bool displayPoints;
+  final double pointsWidth;
   final StrokeCap strokeCap;
   final StrokeJoin strokeJoin;
 
   Polygon({
+    this.key,
     this.points,
     this.color = const Color(0xFF00FF00),
     this.borderStrokeWidth = 0.0,
     this.borderColor = const Color(0xFFFFFF00),
     this.closeFigure = false,
-    this.markPoints = false,
+    this.displayPoints = false,
+    this.pointsWidth = 0.0,
     this.strokeCap = StrokeCap.round,
     this.strokeJoin = StrokeJoin.round,
   });
@@ -47,7 +50,6 @@ class Polygon {
 class PolygonLayer extends StatelessWidget {
   final PolygonLayerOptions polygonOpts;
   final MapState map;
-  LatLng _locationTouched;
 
   PolygonLayer(this.polygonOpts, this.map);
 
@@ -97,43 +99,11 @@ class PolygonLayer extends StatelessWidget {
   }
 
   Widget _buildPolygonWidget(BuildContext context, Polygon polygon, Size size) {
-    return GestureDetector(
-      onTapDown: (details) {
-        var renderObject = context.findRenderObject() as RenderBox;
-        var boxOffset = renderObject.localToGlobal(Offset.zero);
-        var width = renderObject.size.width;
-        var height = renderObject.size.height;
-        _locationTouched = map.offsetToLatLng(
-            details.globalPosition, boxOffset, width, height);
-        //print(_locationTouched);
-      },
-      onTap: () => _handleCallback(polygonOpts.onTap),
-      onLongPress: () => _handleCallback(polygonOpts.onLongPress),
-      child: CustomPaint(
-        painter: PolygonPainter(polygon),
-        size: size,
-      ),
+    return CustomPaint(
+      key: polygon.key,
+      painter: PolygonPainter(polygon),
+      size: size,
     );
-  }
-
-  /// Returns the polygon that contains the [location] and
-  /// is on top of the other polygons.
-  Polygon _determinatePolygonTapped(LatLng point) {
-    for (var polygon in polygonOpts.polygons.reversed) {
-      if (PolyUtil.containsLocation(
-          point.latitude, point.longitude, polygon.points)) {
-        return polygon;
-      }
-    }
-    return null;
-  }
-
-  void _handleCallback(PolygonCallback callback) {
-    if (_locationTouched != null && callback != null) {
-      var polygon = _determinatePolygonTapped(_locationTouched);
-      if (polygon != null) callback(polygon, _locationTouched);
-      _locationTouched = null;
-    }
   }
 }
 
@@ -164,19 +134,18 @@ class PolygonPainter extends CustomPainter {
         : null;
     _paintPolygon(canvas, polygonOpt.offsets, paint);
     if (polygonOpt.borderStrokeWidth > 0.0) {
-      double borderRadius = (polygonOpt.borderStrokeWidth / 2);
-      _paintLine(canvas, polygonOpt.offsets, borderRadius, borderPaint);
+      _paintLine(canvas, polygonOpt.offsets, borderPaint);
     }
   }
 
-  void _paintLine(
-      Canvas canvas, List<Offset> offsets, double radius, Paint paint) {
+  void _paintLine(Canvas canvas, List<Offset> offsets, Paint paint) {
     if (polygonOpt.closeFigure) offsets.add(offsets.first);
     canvas.drawPoints(PointMode.lines, offsets, paint);
-    if (polygonOpt.markPoints)
+    if (polygonOpt.displayPoints && polygonOpt.pointsWidth > 0.0) {
       for (var offset in offsets) {
-        canvas.drawCircle(offset, radius, paint);
+        canvas.drawCircle(offset, polygonOpt.pointsWidth, paint);
       }
+    }
   }
 
   void _paintPolygon(Canvas canvas, List<Offset> offsets, Paint paint) {

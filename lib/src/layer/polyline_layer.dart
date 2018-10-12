@@ -3,7 +3,6 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/src/core/polyutil.dart';
 import 'package:flutter_map/src/map/map.dart';
 import 'package:latlong/latlong.dart' hide Path; // conflict with Path from UI
 
@@ -19,6 +18,7 @@ class PolylineLayerOptions extends LayerOptions {
 }
 
 class Polyline {
+  final Key key;
   final List<LatLng> points;
   final List<Offset> offsets = [];
   final double strokeWidth;
@@ -26,16 +26,21 @@ class Polyline {
   final double borderStrokeWidth;
   final Color borderColor;
   final bool isDotted;
+  final bool displayPoints;
+  final double pointsWidth;
   final StrokeCap strokeCap;
   final StrokeJoin strokeJoin;
 
   Polyline({
+    this.key,
     this.points,
     this.strokeWidth = 1.0,
     this.color = const Color(0xFF00FF00),
     this.borderStrokeWidth = 0.0,
     this.borderColor = const Color(0xFFFFFF00),
     this.isDotted = false,
+    this.displayPoints = false,
+    this.pointsWidth = 0.0,
     this.strokeCap = StrokeCap.round,
     this.strokeJoin = StrokeJoin.round,
   });
@@ -44,7 +49,6 @@ class Polyline {
 class PolylineLayer extends StatelessWidget {
   final PolylineLayerOptions polylineOpts;
   final MapState map;
-  LatLng _locationTouched;
 
   PolylineLayer(this.polylineOpts, this.map);
 
@@ -88,60 +92,19 @@ class PolylineLayer extends StatelessWidget {
 
   List<Widget> _buildPolylines(BuildContext context, Size size) {
     var list = polylineOpts.polylines
-        .where((it) => it.points.isNotEmpty)
-        .map((it) => _buildPolylineWidget(context, it, size))
+        .where((polyline) => polyline.points.isNotEmpty)
+        .map((polyline) => _buildPolylineWidget(context, polyline, size))
         .toList();
     return list;
   }
 
   Widget _buildPolylineWidget(
       BuildContext context, Polyline polyline, Size size) {
-    return GestureDetector(
-      onTapDown: (details) {
-        var renderObject = context.findRenderObject() as RenderBox;
-        var boxOffset = renderObject.localToGlobal(Offset.zero);
-        var width = renderObject.size.width;
-        var height = renderObject.size.height;
-        _locationTouched = map.offsetToLatLng(
-            details.globalPosition, boxOffset, width, height);
-        //print(_locationTouched);
-      },
-      onTap: () => _handleCallback(polylineOpts.onTap),
-      onLongPress: () => _handleCallback(polylineOpts.onLongPress),
-      child: CustomPaint(
-        painter: PolylinePainter(polyline),
-        size: size,
-      ),
+    return CustomPaint(
+      key: polyline.key,
+      painter: PolylinePainter(polyline),
+      size: size,
     );
-  }
-
-  /// Returns the polyline that contains the [location] in its path and
-  /// is on top of the other polylines.
-  /// * [size] is used to calculate the tolerance of meters given the
-  /// strokeWidth of the polyline.
-  ///
-  /// Returns null if no polyline was touched.
-  Polyline _determinatePolylineTapped(LatLng location) {
-    for (var polyline in polylineOpts.polylines.reversed) {
-      ///Calculates an amount of meters of tolerance for the line
-      ///considering the width.
-      var meters = map.getMetersPerPixel(location.latitude) *
-          (polyline.strokeWidth * 0.5);
-      if (PolyUtil.isPointInPolyline(location, polyline.points,
-          toleratedDistance: meters)) {
-        return polyline;
-      }
-    }
-    return null;
-  }
-
-  void _handleCallback(PolylineCallback callback) {
-    if (_locationTouched != null && callback != null) {
-      var polyline = _determinatePolylineTapped(_locationTouched);
-      if (polyline != null)
-        callback(polyline, _locationTouched);
-      _locationTouched = null;
-    }
   }
 }
 
@@ -169,7 +132,11 @@ class PolylinePainter extends CustomPainter {
           ..strokeWidth =
               polylineOpt.strokeWidth + polylineOpt.borderStrokeWidth)
         : null;
-    double radius = polylineOpt.strokeWidth / 2;
+    double radius = polylineOpt.displayPoints &&
+            polylineOpt.pointsWidth > 0.0 &&
+            !polylineOpt.isDotted
+        ? polylineOpt.pointsWidth
+        : polylineOpt.strokeWidth / 2;
     double borderRadius = radius + (polylineOpt.borderStrokeWidth / 2);
     if (polylineOpt.isDotted) {
       double spacing = polylineOpt.strokeWidth * 1.5;

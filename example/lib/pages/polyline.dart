@@ -3,9 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import '../widgets/drawer.dart';
 import 'package:latlong/latlong.dart';
 
-class PolylinePage extends StatelessWidget {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+class PolylinePage extends StatefulWidget {
   static const String route = "polyline";
+  @override
+  State createState() => PolylinePageState();
+}
+
+class PolylinePageState extends State<PolylinePage> {
+  String _eventMessage = "Tap on the map and its elements!";
 
   Widget build(BuildContext context) {
     var pointsA = <LatLng>[
@@ -19,7 +24,6 @@ class PolylinePage extends StatelessWidget {
       LatLng(53.215497, 6.564996),
     ];
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(title: Text("Polylines")),
       drawer: buildDrawer(context, PolylinePage.route),
       body: Padding(
@@ -30,11 +34,17 @@ class PolylinePage extends StatelessWidget {
               padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
               child: Text("Polylines"),
             ),
+            Text(
+              "$_eventMessage",
+              textAlign: TextAlign.center,
+            ),
             Flexible(
               child: FlutterMap(
                 options: MapOptions(
                   center: LatLng(51.5, -0.09),
                   zoom: 5.0,
+                  onTap: _handleMapTapped,
+                  onLongPress: _handleMapLongPressed,
                 ),
                 layers: [
                   TileLayerOptions(
@@ -44,11 +54,16 @@ class PolylinePage extends StatelessWidget {
                   PolylineLayerOptions(
                     polylines: [
                       Polyline(
+                        key: Key("route_a"),
                         points: pointsA,
                         strokeWidth: 10.0,
                         color: Colors.purple,
+                        isDotted: true,
+                        displayPoints: true,
+                        pointsWidth: 8.0
                       ),
                       Polyline(
+                        key: Key("route_b"),
                         points: pointsB,
                         strokeWidth: 10.0,
                         color: Colors.red,
@@ -66,22 +81,36 @@ class PolylinePage extends StatelessWidget {
     );
   }
 
-  void _handleTap(Polyline polyline, LatLng location) {
-    var message = "Tapped on polyline #${polyline.hashCode}. LatLng = $location";
+  void _handleMapTapped(LatLng location) {
+    var message = "Map tapped at ${location.latitude}, ${location.longitude}";
     print(message);
-    _showSnackBarMsg(message);
+    setState(() {
+      this._eventMessage = message;
+    });
+  }
+
+  void _handleMapLongPressed(LatLng location) {
+    var message =
+        "Map long pressed at ${location.latitude}, ${location.longitude}";
+    print(message);
+    setState(() {
+      this._eventMessage = message;
+    });
+  }
+
+  void _handleTap(Polyline polyline, LatLng location) {
+    var message = "Tapped on polyline #${polyline.key}. LatLng = $location";
+    print(message);
+    setState(() {
+      this._eventMessage = message;
+    });
   }
 
   void _handleLongPress(Polyline polyline, LatLng location) {
-    var message =
-        "Long Press on polyline #${polyline.hashCode}. LatLng = $location";
+    var message = "Long Press on polyline #${polyline.key}. LatLng = $location";
     print(message);
-    _showSnackBarMsg(message);
-  }
-
-  void _showSnackBarMsg(String text) {
-    _scaffoldKey.currentState.showSnackBar(
-      SnackBar(content: Text(text)),
-    );
+    setState(() {
+      this._eventMessage = message;
+    });
   }
 }

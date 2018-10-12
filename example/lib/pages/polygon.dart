@@ -3,9 +3,14 @@ import 'package:flutter_map/flutter_map.dart';
 import '../widgets/drawer.dart';
 import 'package:latlong/latlong.dart';
 
-class PolygonPage extends StatelessWidget {
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+class PolygonPage extends StatefulWidget {
   static const String route = "polygon";
+  @override
+  State createState() => PolygonPageState();
+}
+
+class PolygonPageState extends State<PolygonPage> {
+  String _eventMessage = "Tap on the map and its elements!";
 
   Widget build(BuildContext context) {
     var pointsA = <LatLng>[
@@ -18,8 +23,12 @@ class PolygonPage extends StatelessWidget {
       LatLng(52.065709, 4.300589),
       LatLng(53.215497, 6.564996),
     ];
+    var pointsC = <LatLng>[
+      LatLng(48.27491258360703, -4.15977207641507),
+      LatLng(49.32180119795598, 4.241228736481962),
+      LatLng(53.76256142518595, -1.5350269575748168),
+    ];
     return Scaffold(
-      key: _scaffoldKey,
       appBar: AppBar(title: Text("Polygons")),
       drawer: buildDrawer(context, PolygonPage.route),
       body: Padding(
@@ -30,11 +39,17 @@ class PolygonPage extends StatelessWidget {
               padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
               child: Text("Polygons"),
             ),
+            Text(
+              "$_eventMessage",
+              textAlign: TextAlign.center,
+            ),
             Flexible(
               child: FlutterMap(
                 options: MapOptions(
                   center: LatLng(51.5, -0.09),
                   zoom: 5.0,
+                  onTap: _handleMapTapped,
+                  onLongPress: _handleMapLongPressed,
                 ),
                 layers: [
                   TileLayerOptions(
@@ -45,6 +60,7 @@ class PolygonPage extends StatelessWidget {
                   PolygonLayerOptions(
                     polygons: [
                       Polygon(
+                        key: Key("zone_a"),
                         points: pointsA,
                         borderStrokeWidth: 4.0,
                         borderColor: Colors.purple,
@@ -53,12 +69,22 @@ class PolygonPage extends StatelessWidget {
                             0x509C27B0), // Colors.purple with less opacity
                       ),
                       Polygon(
+                        key: Key("zone_b"),
                         points: pointsB,
                         borderStrokeWidth: 4.0,
                         borderColor: Colors.red,
                         closeFigure: true,
                         color:
                             Color(0x50F44336), // Colors.red with less opacity
+                      ),
+                      Polygon(
+                        key: Key("zone_c"),
+                        points: pointsC,
+                        borderStrokeWidth: 4.0,
+                        borderColor: Colors.green,
+                        closeFigure: true,
+                        color: Color(
+                            0x504CAF50), // Colors.purple with less opacity
                       ),
                     ],
                     onTap: _handleTap,
@@ -73,22 +99,36 @@ class PolygonPage extends StatelessWidget {
     );
   }
 
-  void _handleTap(Polygon polygon, LatLng location) {
-    var message = "Tapped on polygon #${polygon.hashCode}. LatLng = $location";
+  void _handleMapTapped(LatLng location) {
+    var message = "Map tapped at ${location.latitude}, ${location.longitude}";
     print(message);
-    _showSnackBarMsg(message);
+    setState(() {
+      this._eventMessage = message;
+    });
+  }
+
+  void _handleMapLongPressed(LatLng location) {
+    var message =
+        "Map long pressed at ${location.latitude}, ${location.longitude}";
+    print(message);
+    setState(() {
+      this._eventMessage = message;
+    });
+  }
+
+  void _handleTap(Polygon polygon, LatLng location) {
+    var message = "Tapped on polygon #${polygon.key}. LatLng = $location";
+    print(message);
+    setState(() {
+      this._eventMessage = message;
+    });
   }
 
   void _handleLongPress(Polygon polygon, LatLng location) {
-    var message =
-        "Long Press on polygon #${polygon.hashCode}. LatLng = $location";
+    var message = "Long press on polygon #${polygon.key}. LatLng = $location";
     print(message);
-    _showSnackBarMsg(message);
-  }
-
-  void _showSnackBarMsg(String text) {
-    _scaffoldKey.currentState.showSnackBar(
-      SnackBar(content: Text(text)),
-    );
+    setState(() {
+      this._eventMessage = message;
+    });
   }
 }

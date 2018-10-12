@@ -25,8 +25,8 @@ export 'package:flutter_map/src/core/point.dart';
 class FlutterMap extends StatefulWidget {
   /// A set of layers' options to used to create the layers on the map
   ///
-  /// Usually a list of [TileLayerOptions], [MarkerLayerOptions] and
-  /// [PolylineLayerOptions].
+  /// Usually a list of [TileLayerOptions], [MarkerLayerOptions],
+  /// [PolylineLayerOptions] & [PolygonLayerOptions].
   final List<LayerOptions> layers;
 
   /// [MapOptions] to create a [MapState] with
@@ -80,6 +80,7 @@ class MapOptions {
   final bool debug;
   final bool interactive;
   final TapCallback onTap;
+  final TapCallback onLongPress;
   final PositionCallback onPositionChanged;
   final List<MapPlugin> plugins;
   LatLng center;
@@ -96,6 +97,7 @@ class MapOptions {
     this.debug = false,
     this.interactive = true,
     this.onTap,
+    this.onLongPress,
     this.onPositionChanged,
     this.plugins = const [],
     this.swPanBoundary,

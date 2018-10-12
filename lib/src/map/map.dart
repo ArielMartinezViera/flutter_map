@@ -45,6 +45,8 @@ class MapControllerImpl implements MapController {
 class MapState {
   final MapOptions options;
   final StreamController<Null> _onMoveSink;
+  final StreamController<LatLng> _onTapSink;
+  final StreamController<LatLng> _onLongPressSink;
 
   double _zoom;
 
@@ -55,11 +57,18 @@ class MapState {
   Point _pixelOrigin;
   bool _initialized = false;
 
-  MapState(this.options) : _onMoveSink = StreamController.broadcast();
+  MapState(this.options)
+      : _onMoveSink = StreamController.broadcast(),
+        _onTapSink = StreamController.broadcast(),
+        _onLongPressSink = StreamController.broadcast();
 
   Point _size;
 
   Stream<Null> get onMoved => _onMoveSink.stream;
+
+  Stream<LatLng> get onTap => _onTapSink.stream;
+
+  Stream<LatLng> get onLongPress => _onLongPressSink.stream;
 
   Point get size => _size;
 
@@ -83,6 +92,8 @@ class MapState {
 
   void dispose() {
     _onMoveSink.close();
+    _onTapSink.close();
+    _onLongPressSink.close();
   }
 
   void move(LatLng center, double zoom) {
@@ -106,6 +117,14 @@ class MapState {
         zoom: zoom,
       ));
     }
+  }
+
+  void broadcastTapEvent(LatLng location) {
+    _onTapSink.add(location);
+  }
+
+  void broadcastLongPressEvent(LatLng location) {
+    _onLongPressSink.add(location);
   }
 
   double _fitZoomToBounds(double zoom) {

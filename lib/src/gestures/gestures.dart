@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_map/src/core/point.dart';
+import 'package:flutter_map/src/core/polyutil.dart';
 import 'package:flutter_map/src/map/map.dart';
 import 'package:latlong/latlong.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -27,14 +28,16 @@ abstract class MapGestureMixin extends State<FlutterMap>
   MapState get map => mapState;
   MapOptions get options;
 
+  LatLng _latlng;
+
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this)
       ..addListener(_handleFlingAnimation);
-    _doubleTapController = AnimationController(
-        vsync: this, duration: Duration(milliseconds: 200))
-      ..addListener(_handleDoubleTapZoomAnimation);
+    _doubleTapController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 200))
+          ..addListener(_handleDoubleTapZoomAnimation);
   }
 
   void handleScaleStart(ScaleStartDetails details) {
@@ -96,10 +99,8 @@ abstract class MapGestureMixin extends State<FlutterMap>
       ..fling(velocity: magnitude / 1000.0);
   }
 
-  void handleTapUp(TapUpDetails details) {
-    if (options.onTap == null) {
-      return;
-    }
+  /// Uses the [TapDownDetails] to calculate the location of the tap.
+  void handleTapDown(TapDownDetails details) {
     // Get the widget's offset
     var renderObject = context.findRenderObject() as RenderBox;
     var boxOffset = renderObject.localToGlobal(Offset.zero);
@@ -107,10 +108,83 @@ abstract class MapGestureMixin extends State<FlutterMap>
     var height = renderObject.size.height;
 
     // convert the point to global coordinates
-    var latlng = map.offsetToLatLng(details.globalPosition, boxOffset, width, height);
+    _latlng =
+        map.offsetToLatLng(details.globalPosition, boxOffset, width, height);
+  }
 
-    // emit the event
-    options.onTap(latlng);
+  void handleTap() {
+    if (_latlng == null) {
+      return;
+    }
+    var map = _getElementTouched();
+    if (map != null) {
+      var layer = map.keys.first;
+      if (layer.onTap != null) {
+        layer.onTap(map[layer], _latlng);
+      }
+    } else if (options.onTap != null) options.onTap(_latlng);
+  }
+
+  void handleLongPress() {
+    if (_latlng == null) {
+      return;
+    }
+    var map = _getElementTouched();
+    if (map != null) {
+      var layer = map.keys.first;
+      if (layer.onTap != null) {
+        layer.onLongPress(map[layer], _latlng);
+      }
+    } else if (options.onLongPress != null) options.onLongPress(_latlng);
+  }
+
+  /// Returns a map of the layer and the element toched.
+  Map _getElementTouched() {
+    for (var layer in widget.layers.reversed) {
+      if (layer is PolygonLayerOptions) {
+        var polygon = _getPolygonByLocation(layer);
+        if (polygon != null) return {layer: polygon};
+      } else if (layer is PolylineLayerOptions) {
+        var polyline = _getPolylineByLocation(layer);
+        if (polyline != null) return {layer: polyline};
+      }
+    }
+    return null;
+  }
+
+  /// Returns the polygon that contains the [location] and
+  /// is on top of the other polygons.
+  ///
+  /// Returns null if no polygon was touched.
+  Polygon _getPolygonByLocation(PolygonLayerOptions layer) {
+    for (var polygon in layer.polygons.reversed) {
+      if (PolyUtil.containsLocation(
+          _latlng.latitude, _latlng.longitude, polygon.points)) {
+        return polygon;
+      }
+    }
+    return null;
+  }
+
+  /// Returns the polyline that contains the [location] in its path and
+  /// is on top of the other polylines.
+  ///
+  /// Returns null if no polyline was touched.
+  Polyline _getPolylineByLocation(PolylineLayerOptions layer) {
+    for (var polyline in layer.polylines.reversed) {
+      ///Calculates an amount of meters of tolerance for the line
+      ///considering the width. When zoomed out is more dificul to tap on
+      ///the line so this distance helps compensate using the width and
+      ///the meters per pixel for the current zoom level. In conclusion,
+      ///a thicker line will be easier to tap.
+      var meters = map.getMetersPerPixel(_latlng.latitude) *
+          (polyline.strokeWidth * 0.5);
+      if (PolyUtil.isPointInPolyline(_latlng, polyline.points,
+          toleratedDistance: meters)) {
+        return polyline;
+      }
+    }
+    return null;
   }
 
   void handleDoubleTap() {
